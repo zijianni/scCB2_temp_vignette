@@ -1,1 +1,1 @@
-# scCB2_temp_vignette
+# Temporary vignette for R package scCB2

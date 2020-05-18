@@ -761,7 +761,7 @@ function toggle_visibility(id1) {
 <pre class="r"><code>if (!requireNamespace(&quot;BiocManager&quot;, quietly = TRUE))
     install.packages(&quot;BiocManager&quot;)
 
-BiocManager::install(&quot;DropletUtils&quot;)</code></pre>
+BiocManager::install(&quot;scCB2&quot;)</code></pre>
 </div>
 <div id="option-2-from-github-source-code-using-devtools" class="section level3">
 <h3><span class="header-section-number">2.1.2</span> Option 2: From GitHub source code using <code>devtools</code></h3>
@@ -830,11 +830,11 @@ dim(mbrainSub)</code></pre>
 <p>The main function <code>CB2FindCell</code> takes raw count matrix as input and return real cells, test statistics and p-values. Now we apply <code>CB2FindCell</code> on <code>mbrainSub</code>, controlling FDR at 0.01 level (Default: 0.01), assuming all barcodes with total count less or equals 100 are background empty droplets (Default: 100), using 2 cores parallel computation (Default: number of total cores in the machine minus 2). For detailed information, see <code>?CB2FindCell</code>.</p>
 <pre class="r"><code>CBOut &lt;- CB2FindCell(mbrainSub, FDR_threshold = 0.01, 
     lower = 100, Ncores = 2, verbose = TRUE)</code></pre>
-<pre><code>## Time difference of 55.7064 secs</code></pre>
+<pre><code>## Time difference of 1.332234 mins</code></pre>
 <pre class="r"><code>summary(CBOut)</code></pre>
 <pre><code>##                Length  Class      Mode   
 ## cluster_matrix  895936 dgCMatrix  S4     
-## cell_matrix    3919720 dgCMatrix  S4     
+## cell_matrix    3975716 dgCMatrix  S4     
 ## ClusterStat          4 data.frame list   
 ## Cluster              5 -none-     list   
 ## BarcodeStat          4 data.frame list   
@@ -846,13 +846,13 @@ dim(mbrainSub)</code></pre>
 <pre class="r"><code>RealCell &lt;- GetCellMat(CBOut, MTfilter = 0.05)
 str(RealCell)</code></pre>
 <pre><code>## Formal class &#39;dgCMatrix&#39; [package &quot;Matrix&quot;] with 6 slots
-##   ..@ i       : int [1:254084] 3154 4313 10038 11696 13354 13355 14245 14514 15142 15210 ...
-##   ..@ p       : int [1:141] 0 23 50 96 192 288 394 509 698 1777 ...
-##   ..@ Dim     : int [1:2] 27998 140
+##   ..@ i       : int [1:254412] 3154 4313 10038 11696 13354 13355 14245 14514 15142 15210 ...
+##   ..@ p       : int [1:142] 0 23 50 96 192 288 394 509 698 1777 ...
+##   ..@ Dim     : int [1:2] 27998 141
 ##   ..@ Dimnames:List of 2
 ##   .. ..$ : chr [1:27998] &quot;Xkr4&quot; &quot;Gm1992&quot; &quot;Gm37381&quot; &quot;Rp1&quot; ...
-##   .. ..$ : chr [1:140] &quot;AAGGCAGGTCTTGCGG-1&quot; &quot;ACATCAGCACATTAGC-1&quot; &quot;AAGACCTAGACTGGGT-1&quot; &quot;AATCCAGAGATCTGAA-1&quot; ...
-##   ..@ x       : num [1:254084] 1 1 1 1 7 38 1 1 1 1 ...
+##   .. ..$ : chr [1:141] &quot;AAGGCAGGTCTTGCGG-1&quot; &quot;ACATCAGCACATTAGC-1&quot; &quot;AAGACCTAGACTGGGT-1&quot; &quot;AATCCAGAGATCTGAA-1&quot; ...
+##   ..@ x       : num [1:254412] 1 1 1 1 7 38 1 1 1 1 ...
 ##   ..@ factors : list()</code></pre>
 </div>
 <div id="downstream-analysis" class="section level2">
@@ -862,23 +862,23 @@ str(RealCell)</code></pre>
     project = &quot;mbrain_example&quot;)
 SeuratObj</code></pre>
 <pre><code>## An object of class Seurat 
-## 27998 features across 140 samples within 1 assay 
+## 27998 features across 141 samples within 1 assay 
 ## Active assay: RNA (27998 features, 0 variable features)</code></pre>
 </div>
 <div id="all-in-one-function-1" class="section level2">
 <h2><span class="header-section-number">3.5</span> All-in-one function</h2>
 <p>Under default parameters, we can directly use all-in-one function <code>QuickCB2</code> to get real cell matrix from 10x raw data. Note: Due to randomness and high-mitochondrial barcode filtering, <code>RealCell_Quick</code> is not the same as <code>RealCell</code>.</p>
 <pre class="r"><code>RealCell_Quick &lt;- QuickCB2(dir = data.dir, Ncores = 2)</code></pre>
-<pre><code>## Time difference of 3.186411 mins</code></pre>
+<pre><code>## Time difference of 3.183416 mins</code></pre>
 <pre class="r"><code>str(RealCell_Quick)</code></pre>
 <pre><code>## Formal class &#39;dgCMatrix&#39; [package &quot;Matrix&quot;] with 6 slots
-##   ..@ i       : int [1:3564899] 227 663 1901 1993 2419 2939 2942 4121 4421 4520 ...
-##   ..@ p       : int [1:2260] 0 89 182 273 369 468 567 657 766 875 ...
-##   ..@ Dim     : int [1:2] 27998 2259
+##   ..@ i       : int [1:3568391] 227 663 1901 1993 2419 2939 2942 4121 4421 4520 ...
+##   ..@ p       : int [1:2290] 0 89 182 273 369 468 567 657 766 875 ...
+##   ..@ Dim     : int [1:2] 27998 2289
 ##   ..@ Dimnames:List of 2
 ##   .. ..$ : chr [1:27998] &quot;Xkr4&quot; &quot;Gm1992&quot; &quot;Gm37381&quot; &quot;Rp1&quot; ...
-##   .. ..$ : chr [1:2259] &quot;AGTAGTCCAATGTTGC-1&quot; &quot;GTGCTTCGTCAATGTC-1&quot; &quot;GAGTCCGGTCAACATC-1&quot; &quot;AACTGGTAGAGCTATA-1&quot; ...
-##   ..@ x       : num [1:3564899] 2 1 1 1 1 1 1 1 1 1 ...
+##   .. ..$ : chr [1:2289] &quot;AGTAGTCCAATGTTGC-1&quot; &quot;GTGCTTCGTCAATGTC-1&quot; &quot;GAGTCCGGTCAACATC-1&quot; &quot;AACTGGTAGAGCTATA-1&quot; ...
+##   ..@ x       : num [1:3568391] 2 1 1 1 1 1 1 1 1 1 ...
 ##   ..@ factors : list()</code></pre>
 <p>Now it’s ready for downstream analysis such as normalization and clustering. Example Seurat tutorial: <a href="https://satijalab.org/seurat/v3.1/pbmc3k_tutorial.html" class="uri">https://satijalab.org/seurat/v3.1/pbmc3k_tutorial.html</a></p>
 </div>
@@ -970,7 +970,7 @@ SeuratObj</code></pre>
 </div>
 <div id="citation" class="section level1">
 <h1><span class="header-section-number">5</span> Citation</h1>
-<p>Ni. Z., Chen, S., Brown, J., Kendziorski, C. (2019). CB2 distinguishes cells from background barcodes in 10x Genomics data. bioRxiv doi: 10.1101/832535</p>
+<p>Ni. Z., Chen, S., Brown, J., Kendziorski, C. (2020). CB2 improves power of cell detection in droplet-based single-cell RNA sequencing data. Genome Biology doi: xxxxxx</p>
 </div>
 
 

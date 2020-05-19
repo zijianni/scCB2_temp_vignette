@@ -11,7 +11,7 @@
 
 <meta name="author" content="Zijian Ni and Christina Kendziorski" />
 
-<meta name="date" content="2020-05-17" />
+<meta name="date" content="2020-05-18" />
 
 <title>CB2: A cluster-based approach for distinguishing cells from background barcodes in 10x Genomics data</title>
 
@@ -717,9 +717,9 @@ function toggle_visibility(id1) {
 
 <h1 class="title toc-ignore">CB2: A cluster-based approach for distinguishing cells from background barcodes in 10x Genomics data</h1>
 <p class="author-name">Zijian Ni and Christina Kendziorski</p>
-<h4 class="date">05/17/2020</h4>
+<h4 class="date">05/18/2020</h4>
 <h4 class="package">Package</h4>
-<p>scCB2 0.99.17</p>
+<p>scCB2 0.99.18</p>
 
 </div>
 
@@ -734,6 +734,7 @@ function toggle_visibility(id1) {
 </ul></li>
 <li><a href="#all-in-one-function"><span class="toc-section-number">2.2</span> All-in-one function</a></li>
 <li><a href="#running-speed"><span class="toc-section-number">2.3</span> Running Speed</a></li>
+<li><a href="#saving-a-sparse-matrix-to-10x-format"><span class="toc-section-number">2.4</span> Saving a sparse matrix to 10x format</a></li>
 </ul></li>
 <li><a href="#detailed-steps"><span class="toc-section-number">3</span> Detailed Steps</a><ul>
 <li><a href="#read-count-matrix-from-10x-output-raw-data"><span class="toc-section-number">3.1</span> Read count matrix from 10x output raw data</a></li>
@@ -765,7 +766,7 @@ BiocManager::install(&quot;scCB2&quot;)</code></pre>
 </div>
 <div id="option-2-from-github-source-code-using-devtools" class="section level3">
 <h3><span class="header-section-number">2.1.2</span> Option 2: From GitHub source code using <code>devtools</code></h3>
-<pre class="r"><code>if(!requireNamespace(devtools, quietly = TRUE))
+<pre class="r"><code>if(!requireNamespace(&quot;devtools&quot;, quietly = TRUE))
     install.packages(&quot;devtools&quot;)
 
 devtools::install_github(&quot;zijianni/scCB2&quot;, build_manual = TRUE, build_vignettes = TRUE)</code></pre>
@@ -779,8 +780,8 @@ devtools::install_github(&quot;zijianni/scCB2&quot;, build_manual = TRUE, build_
 <pre class="r"><code>library(scCB2)
 
 #If raw data has three separate files within one directory
-#and you want to control FDR at 0.1%:
-RealCell &lt;-  QuickCB2(dir = &quot;/path/to/raw/data/directory&quot;, FDR_threshold = 0.001, AsSeurat = FALSE)
+#and you want to control FDR at the default 1%:
+RealCell &lt;-  QuickCB2(dir = &quot;/path/to/raw/data/directory&quot;)
 
 #If raw data is in HDF5 format and 
 #you&#39;d like a Seurat object under default FDR threshold:
@@ -790,6 +791,12 @@ RealCell_S &lt;-  QuickCB2(h5file = &quot;/path/to/raw/data/HDF5&quot;, AsSeurat
 <div id="running-speed" class="section level2">
 <h2><span class="header-section-number">2.3</span> Running Speed</h2>
 <p>The computational speed is related to the size and structure of input datasets. As a reference, scCB2 running on a medium-size dataset (around 30,000 genes and 8,000 cells after cell calling) using 6 cores takes less than 10 minutes.</p>
+</div>
+<div id="saving-a-sparse-matrix-to-10x-format" class="section level2">
+<h2><span class="header-section-number">2.4</span> Saving a sparse matrix to 10x format</h2>
+<p>For users who would like to save the CB2 output cell matrix to 10x format (e.g. “matrix.mtx”, “barcodes.tsv” and “genes.tsv”), there are existing packages to help. For example in package <code>DropletUtils</code>:</p>
+<pre class="r"><code>DropletUtils::write10xCounts(path = &quot;/path/to/save/data&quot;,
+                             x = RealCell)</code></pre>
 </div>
 </div>
 <div id="detailed-steps" class="section level1">
@@ -827,14 +834,13 @@ str(mbrain1k)</code></pre>
 <pre class="r"><code>data(mbrainSub)
 dim(mbrainSub)</code></pre>
 <pre><code>## [1] 27998 50000</code></pre>
-<p>The main function <code>CB2FindCell</code> takes raw count matrix as input and return real cells, test statistics and p-values. Now we apply <code>CB2FindCell</code> on <code>mbrainSub</code>, controlling FDR at 0.01 level (Default: 0.01), assuming all barcodes with total count less or equals 100 are background empty droplets (Default: 100), using 2 cores parallel computation (Default: number of total cores in the machine minus 2). For detailed information, see <code>?CB2FindCell</code>.</p>
-<pre class="r"><code>CBOut &lt;- CB2FindCell(mbrainSub, FDR_threshold = 0.01, 
-    lower = 100, Ncores = 2, verbose = TRUE)</code></pre>
-<pre><code>## Time difference of 1.332234 mins</code></pre>
+<p>The main function <code>CB2FindCell</code> takes raw count matrix as input and return real cells, test statistics and p-values. Now we apply <code>CB2FindCell</code> on <code>mbrainSub</code>, controlling FDR at 0.01 level (Default), assuming all barcodes with total count less or equals 100 are background empty droplets (Default), using 2 cores parallel computation (Default: number of total cores in the machine minus 2). For detailed information, see <code>?CB2FindCell</code>.</p>
+<pre class="r"><code>CBOut &lt;- CB2FindCell(mbrainSub, Ncores = 2)</code></pre>
+<pre><code>## Time difference of 57.80212 secs</code></pre>
 <pre class="r"><code>summary(CBOut)</code></pre>
 <pre><code>##                Length  Class      Mode   
-## cluster_matrix  895936 dgCMatrix  S4     
-## cell_matrix    3975716 dgCMatrix  S4     
+## cluster_matrix  727948 dgCMatrix  S4     
+## cell_matrix    4059710 dgCMatrix  S4     
 ## ClusterStat          4 data.frame list   
 ## Cluster              5 -none-     list   
 ## BarcodeStat          4 data.frame list   
@@ -842,17 +848,17 @@ dim(mbrainSub)</code></pre>
 </div>
 <div id="extract-real-cell-matrix" class="section level2">
 <h2><span class="header-section-number">3.3</span> Extract real cell matrix</h2>
-<p>If readers are not interested in the output testing information, <code>GetCellMat</code> can extract real cell matrix directly from <code>CB2FindCell</code> output. It also provides a filtering option to remove broken cells based on proportion of mitochondrial gene expressions. Now we apply <code>GetCellMat</code> on <code>CBOut</code>, filtering out cells whose mitochondrial proportions are greater than 0.05 (Default: 1, No filtering).</p>
-<pre class="r"><code>RealCell &lt;- GetCellMat(CBOut, MTfilter = 0.05)
+<p>If readers are not interested in the output testing information, <code>GetCellMat</code> can extract real cell matrix directly from <code>CB2FindCell</code> output. It also provides a filtering option to remove broken cells based on proportion of mitochondrial gene expressions. Now we apply <code>GetCellMat</code> on <code>CBOut</code>, filtering out cells whose mitochondrial proportions are greater than 0.25 (Default: 1, No filtering).</p>
+<pre class="r"><code>RealCell &lt;- GetCellMat(CBOut, MTfilter = 0.25)
 str(RealCell)</code></pre>
 <pre><code>## Formal class &#39;dgCMatrix&#39; [package &quot;Matrix&quot;] with 6 slots
-##   ..@ i       : int [1:254412] 3154 4313 10038 11696 13354 13355 14245 14514 15142 15210 ...
-##   ..@ p       : int [1:142] 0 23 50 96 192 288 394 509 698 1777 ...
-##   ..@ Dim     : int [1:2] 27998 141
+##   ..@ i       : int [1:272746] 3154 4313 10038 11696 13354 13355 14245 14514 15142 15210 ...
+##   ..@ p       : int [1:169] 0 23 50 96 723 1392 2471 3400 4420 5430 ...
+##   ..@ Dim     : int [1:2] 27998 168
 ##   ..@ Dimnames:List of 2
 ##   .. ..$ : chr [1:27998] &quot;Xkr4&quot; &quot;Gm1992&quot; &quot;Gm37381&quot; &quot;Rp1&quot; ...
-##   .. ..$ : chr [1:141] &quot;AAGGCAGGTCTTGCGG-1&quot; &quot;ACATCAGCACATTAGC-1&quot; &quot;AAGACCTAGACTGGGT-1&quot; &quot;AATCCAGAGATCTGAA-1&quot; ...
-##   ..@ x       : num [1:254412] 1 1 1 1 7 38 1 1 1 1 ...
+##   .. ..$ : chr [1:168] &quot;AAGGCAGGTCTTGCGG-1&quot; &quot;ACATCAGCACATTAGC-1&quot; &quot;AAGACCTAGACTGGGT-1&quot; &quot;ACCAGTAAGTGCGATG-1&quot; ...
+##   ..@ x       : num [1:272746] 1 1 1 1 7 38 1 1 1 1 ...
 ##   ..@ factors : list()</code></pre>
 </div>
 <div id="downstream-analysis" class="section level2">
@@ -862,23 +868,23 @@ str(RealCell)</code></pre>
     project = &quot;mbrain_example&quot;)
 SeuratObj</code></pre>
 <pre><code>## An object of class Seurat 
-## 27998 features across 141 samples within 1 assay 
+## 27998 features across 168 samples within 1 assay 
 ## Active assay: RNA (27998 features, 0 variable features)</code></pre>
 </div>
 <div id="all-in-one-function-1" class="section level2">
 <h2><span class="header-section-number">3.5</span> All-in-one function</h2>
-<p>Under default parameters, we can directly use all-in-one function <code>QuickCB2</code> to get real cell matrix from 10x raw data. Note: Due to randomness and high-mitochondrial barcode filtering, <code>RealCell_Quick</code> is not the same as <code>RealCell</code>.</p>
+<p>Under default parameters, we can directly use all-in-one function <code>QuickCB2</code> to get real cell matrix from 10x raw data.</p>
 <pre class="r"><code>RealCell_Quick &lt;- QuickCB2(dir = data.dir, Ncores = 2)</code></pre>
-<pre><code>## Time difference of 3.183416 mins</code></pre>
+<pre><code>## Time difference of 3.33085 mins</code></pre>
 <pre class="r"><code>str(RealCell_Quick)</code></pre>
 <pre><code>## Formal class &#39;dgCMatrix&#39; [package &quot;Matrix&quot;] with 6 slots
-##   ..@ i       : int [1:3568391] 227 663 1901 1993 2419 2939 2942 4121 4421 4520 ...
-##   ..@ p       : int [1:2290] 0 89 182 273 369 468 567 657 766 875 ...
-##   ..@ Dim     : int [1:2] 27998 2289
+##   ..@ i       : int [1:3564472] 227 663 1901 1993 2419 2939 2942 4121 4421 4520 ...
+##   ..@ p       : int [1:2255] 0 89 182 273 369 468 567 657 766 875 ...
+##   ..@ Dim     : int [1:2] 27998 2254
 ##   ..@ Dimnames:List of 2
 ##   .. ..$ : chr [1:27998] &quot;Xkr4&quot; &quot;Gm1992&quot; &quot;Gm37381&quot; &quot;Rp1&quot; ...
-##   .. ..$ : chr [1:2289] &quot;AGTAGTCCAATGTTGC-1&quot; &quot;GTGCTTCGTCAATGTC-1&quot; &quot;GAGTCCGGTCAACATC-1&quot; &quot;AACTGGTAGAGCTATA-1&quot; ...
-##   ..@ x       : num [1:3568391] 2 1 1 1 1 1 1 1 1 1 ...
+##   .. ..$ : chr [1:2254] &quot;AGTAGTCCAATGTTGC-1&quot; &quot;GTGCTTCGTCAATGTC-1&quot; &quot;GAGTCCGGTCAACATC-1&quot; &quot;AACTGGTAGAGCTATA-1&quot; ...
+##   ..@ x       : num [1:3564472] 2 1 1 1 1 1 1 1 1 1 ...
 ##   ..@ factors : list()</code></pre>
 <p>Now it’s ready for downstream analysis such as normalization and clustering. Example Seurat tutorial: <a href="https://satijalab.org/seurat/v3.1/pbmc3k_tutorial.html" class="uri">https://satijalab.org/seurat/v3.1/pbmc3k_tutorial.html</a></p>
 </div>
@@ -903,7 +909,7 @@ SeuratObj</code></pre>
 ## [1] stats     graphics  grDevices utils     datasets  methods   base     
 ## 
 ## other attached packages:
-## [1] scCB2_0.99.17    knitr_1.28       BiocStyle_2.16.0
+## [1] scCB2_0.99.18    knitr_1.28       BiocStyle_2.16.0
 ## 
 ## loaded via a namespace (and not attached):
 ##   [1] Seurat_3.1.5                Rtsne_0.15                 

@@ -9,9 +9,8 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="Zijian Ni and Christina Kendziorski" />
 
-<meta name="date" content="2020-05-18" />
+<meta name="date" content="2020-05-30" />
 
 <title>CB2: A cluster-based approach for distinguishing cells from background barcodes in 10x Genomics data</title>
 
@@ -717,9 +716,9 @@ function toggle_visibility(id1) {
 
 <h1 class="title toc-ignore">CB2: A cluster-based approach for distinguishing cells from background barcodes in 10x Genomics data</h1>
 <p class="author-name">Zijian Ni and Christina Kendziorski</p>
-<h4 class="date">05/18/2020</h4>
+<h4 class="date">05/30/2020</h4>
 <h4 class="package">Package</h4>
-<p>scCB2 0.99.18</p>
+<p>scCB2 0.99.19</p>
 
 </div>
 
@@ -750,8 +749,25 @@ function toggle_visibility(id1) {
 
 <div id="introduction" class="section level1">
 <h1><span class="header-section-number">1</span> Introduction</h1>
-<p>Droplet-based single cell RNA-seq technologies provide a novel insight in transcriptome profiles of individual cells with a much larger cell numbers and cheaper cost compared with microfluidic-based single cell RNA-seq. During library preparation, each cell is expected to be captured by one droplet. The number of droplets are usually much more than the number of cells, thus most droplets do not contain real cells. However, there are always free-floating RNA fragments in the library due to broken cells or library contamination. Empty droplets will capture them and have non-zero expression values after sequencing.</p>
-<p><strong>CB2</strong> is a cluster-based approach for distinguishing true cells from background barcodes in droplet-based single cell RNA-seq experiments (especially for 10x Chromium output), while <code>scCB2</code> is its corresponding R package. It is based on clustering similar barcodes and calculating Monte-Carlo p-value for each cluster to test against background distribution. This cluster-level test outperforms single-barcode-level tests not only for high count barcodes, but also in dealing with low count barcodes and homogeneous sequencing library, while keeping FDR well controlled.</p>
+<p>Droplet-based single-cell RNA sequencing (scRNA-seq) is a powerful and widely-used approach for profiling genome-wide gene expression
+in individual cells. Current commercial droplet-based technologies such as 10X Genomics utilize gel beads, each containing
+oligonucleotide indexes made up of bead-specific barcodes combined with unique molecular identifiers (UMIs) and oligo-dT tags
+to prime polyadenylated RNA. Single cells of interest are combined with reagents in one channel of a microfluidic chip,
+and gel beads in another, to form gel-beads in emulsion, or GEMs. Oligonucleotide indexes bind polyadenylated RNA within each GEM
+reaction vesicle before gel beads are dissolved releasing the bound oligos into solution for reverse transcription.
+By design, each resulting cDNA molecule contains a UMI and a GEM-specific barcode that, ideally,
+tags mRNA from an individual cell, but this is often not the case in practice. To distinguish true cells from background barcodes in
+droplet-based single cell RNA-seq experiments, we introduce <strong>CB2</strong> and <code>scCB2</code>, its corresponding R package.</p>
+<p><strong>CB2</strong> extends the EmptyDrops approach by introducing a clustering step that groups similar barcodes and
+then conducts a statistical test to identify groups with expression distributions that vary from the background.
+While advantages are expected in many settings, users will benefit from
+noting that <strong>CB2</strong> does not test for doublets or multiplets and, consequently, some of the high count identifications
+may consist of two or more cells. Methods for identifying multiplets may prove useful after applying <strong>CB2</strong>.
+It is also important to note that any method for distinguishing cells from background barcodes is technically correct in
+identifying low-quality cells given that damaged cells exhibit expression profiles that differ from the background.
+Specifically, mitochondrial gene expression is often high in damaged cells.
+Such cells are typically not of interest in downstream analysis and should therefore be removed.
+The GetCellMat function in <code>scCB2</code> may be used toward this end.</p>
 </div>
 <div id="quick-start" class="section level1">
 <h1><span class="header-section-number">2</span> Quick Start</h1>
@@ -770,12 +786,12 @@ BiocManager::install(&quot;scCB2&quot;)</code></pre>
     install.packages(&quot;devtools&quot;)
 
 devtools::install_github(&quot;zijianni/scCB2&quot;, build_manual = TRUE, build_vignettes = TRUE)</code></pre>
-<p>Note: building vignettes might take ~10 minutes.</p>
+<p>Note: building vignettes may take ~10 minutes.</p>
 </div>
 </div>
 <div id="all-in-one-function" class="section level2">
 <h2><span class="header-section-number">2.2</span> All-in-one function</h2>
-<p><code>QuickCB2</code> is an all-in-one function to apply CB2 on 10x Cell Ranger raw data and get a matrix of real cells identified by CB2 under default settings. By specifying <code>AsSeurat = TRUE</code>, a Seurat object is returned so that users can directly apply Seurat pipeline for downstream analyses.</p>
+<p><code>QuickCB2</code> is an all-in-one function to apply CB2 on 10x Cell Ranger raw data and get a matrix of real cells identified by CB2 under default settings. By specifying <code>AsSeurat = TRUE</code>, a Seurat object is returned so that users can directly apply the Seurat pipeline for downstream analyses.</p>
 <p>Usage:</p>
 <pre class="r"><code>library(scCB2)
 
@@ -786,7 +802,7 @@ RealCell &lt;-  QuickCB2(dir = &quot;/path/to/raw/data/directory&quot;)
 #If raw data is in HDF5 format and 
 #you&#39;d like a Seurat object under default FDR threshold:
 RealCell_S &lt;-  QuickCB2(h5file = &quot;/path/to/raw/data/HDF5&quot;, AsSeurat = TRUE)</code></pre>
-<p>An example illustrating how it really works and what the final output looks like can be found at the end of <em>Detailed Steps</em>.</p>
+<p>An example illustrating how it works and what the final output looks like can be found at the end of <em>Detailed Steps</em>.</p>
 </div>
 <div id="running-speed" class="section level2">
 <h2><span class="header-section-number">2.3</span> Running Speed</h2>
@@ -803,7 +819,7 @@ RealCell_S &lt;-  QuickCB2(h5file = &quot;/path/to/raw/data/HDF5&quot;, AsSeurat
 <h1><span class="header-section-number">3</span> Detailed Steps</h1>
 <div id="read-count-matrix-from-10x-output-raw-data" class="section level2">
 <h2><span class="header-section-number">3.1</span> Read count matrix from 10x output raw data</h2>
-<p>Currently, the most widely-used droplet-based protocol is 10x Chromium. Our package provides handy functions to directly read 10x Cell Ranger output files and generate feature-by-barcode count matrix into R. Public 10x datasets can be found <a href="https://www.10xgenomics.com/resources/datasets">here</a>. We use <a href="http://cf.10xgenomics.com/samples/cell-exp/2.1.0/neurons_900/neurons_900_raw_gene_bc_matrices.tar.gz">1k Brain Cells from an E18 Mouse</a> as the example in this vignette.</p>
+<p>Currently, the most widely-used droplet-based protocol is 10x Chromium. Our package provides functions to directly read 10x Cell Ranger output files and generate a feature-by-barcode count matrix that may be read into R. Public 10x datasets can be found <a href="https://www.10xgenomics.com/resources/datasets">here</a>. We use <a href="http://cf.10xgenomics.com/samples/cell-exp/2.1.0/neurons_900/neurons_900_raw_gene_bc_matrices.tar.gz">1k Brain Cells from an E18 Mouse</a> as the example in this vignette.</p>
 <pre class="r"><code>library(scCB2)
 data.dir &lt;- file.path(tempdir(),&quot;CB2_example&quot;)
 dir.create(data.dir)
@@ -824,23 +840,23 @@ str(mbrain1k)</code></pre>
 ##   .. ..$ : chr [1:737280] &quot;AAACCTGAGAAACCAT-1&quot; &quot;AAACCTGAGAAACCGC-1&quot; &quot;AAACCTGAGAAACCTA-1&quot; &quot;AAACCTGAGAAACGAG-1&quot; ...
 ##   ..@ x       : num [1:5027974] 1 1 1 1 1 1 1 1 1 1 ...
 ##   ..@ factors : list()</code></pre>
-<p>If raw data is not from 10x Chromium pipeline, user may manually create the feature-by-barcode count matrix with rows representing genes and columns representing barcodes. Gene and barcode IDs should be unique. The format of count matrix can be either sparse matrix or standard matrix.</p>
+<p>If raw data is not from the 10x Chromium pipeline, a user may manually create the feature-by-barcode count matrix with rows representing genes and columns representing barcodes. Gene and barcode IDs should be unique. The format of the count matrix can be either a sparse matrix or standard matrix.</p>
 </div>
 <div id="run-cb2-to-distinguish-real-cells-from-empty-droplets" class="section level2">
 <h2><span class="header-section-number">3.2</span> Run <strong>CB2</strong> to distinguish real cells from empty droplets</h2>
-<p>We use the first 50,000 barcodes to reduce problem size.</p>
+<p>We use the first 50,000 barcodes.</p>
 <pre class="r"><code>mbrainSub &lt;- mbrain1k[,1:50000]</code></pre>
-<p>For readers who haven’t downloaded raw data in the previous step, this matrix is also integrated into the package and can be loaded using</p>
+<p>For readers who have not downloaded raw data in the previous step, this matrix is also integrated into the package and can be loaded using</p>
 <pre class="r"><code>data(mbrainSub)
 dim(mbrainSub)</code></pre>
 <pre><code>## [1] 27998 50000</code></pre>
-<p>The main function <code>CB2FindCell</code> takes raw count matrix as input and return real cells, test statistics and p-values. Now we apply <code>CB2FindCell</code> on <code>mbrainSub</code>, controlling FDR at 0.01 level (Default), assuming all barcodes with total count less or equals 100 are background empty droplets (Default), using 2 cores parallel computation (Default: number of total cores in the machine minus 2). For detailed information, see <code>?CB2FindCell</code>.</p>
+<p>The main function <code>CB2FindCell</code> takes a raw count matrix as input and returns real cells, test statistics, and p-values. Now we apply <code>CB2FindCell</code> on <code>mbrainSub</code>, controlling FDR at 0.01 level (Default), assuming all barcodes with total count less than or equal to 100 are background empty droplets (Default), using 2 cores parallel computation (Default: number of total cores in the machine minus 2). For detailed information, see <code>?CB2FindCell</code>.</p>
 <pre class="r"><code>CBOut &lt;- CB2FindCell(mbrainSub, Ncores = 2)</code></pre>
-<pre><code>## Time difference of 57.80212 secs</code></pre>
+<pre><code>## Time difference of 1.332562 mins</code></pre>
 <pre class="r"><code>summary(CBOut)</code></pre>
 <pre><code>##                Length  Class      Mode   
-## cluster_matrix  727948 dgCMatrix  S4     
-## cell_matrix    4059710 dgCMatrix  S4     
+## cluster_matrix  895936 dgCMatrix  S4     
+## cell_matrix    3947718 dgCMatrix  S4     
 ## ClusterStat          4 data.frame list   
 ## Cluster              5 -none-     list   
 ## BarcodeStat          4 data.frame list   
@@ -848,43 +864,43 @@ dim(mbrainSub)</code></pre>
 </div>
 <div id="extract-real-cell-matrix" class="section level2">
 <h2><span class="header-section-number">3.3</span> Extract real cell matrix</h2>
-<p>If readers are not interested in the output testing information, <code>GetCellMat</code> can extract real cell matrix directly from <code>CB2FindCell</code> output. It also provides a filtering option to remove broken cells based on proportion of mitochondrial gene expressions. Now we apply <code>GetCellMat</code> on <code>CBOut</code>, filtering out cells whose mitochondrial proportions are greater than 0.25 (Default: 1, No filtering).</p>
+<p>If readers are not interested in the output testing information, <code>GetCellMat</code> can extract the real cell matrix directly from <code>CB2FindCell</code> output. It also provides a filtering option to remove broken cells based on the proportion of mitochondrial gene expressions. Now we apply <code>GetCellMat</code> on <code>CBOut</code>, filtering out cells whose mitochondrial proportions are greater than 0.25 (Default: 1, No filtering).</p>
 <pre class="r"><code>RealCell &lt;- GetCellMat(CBOut, MTfilter = 0.25)
 str(RealCell)</code></pre>
 <pre><code>## Formal class &#39;dgCMatrix&#39; [package &quot;Matrix&quot;] with 6 slots
-##   ..@ i       : int [1:272746] 3154 4313 10038 11696 13354 13355 14245 14514 15142 15210 ...
-##   ..@ p       : int [1:169] 0 23 50 96 723 1392 2471 3400 4420 5430 ...
-##   ..@ Dim     : int [1:2] 27998 168
+##   ..@ i       : int [1:272781] 3154 4313 10038 11696 13354 13355 14245 14514 15142 15210 ...
+##   ..@ p       : int [1:171] 0 23 50 96 192 288 386 492 607 796 ...
+##   ..@ Dim     : int [1:2] 27998 170
 ##   ..@ Dimnames:List of 2
 ##   .. ..$ : chr [1:27998] &quot;Xkr4&quot; &quot;Gm1992&quot; &quot;Gm37381&quot; &quot;Rp1&quot; ...
-##   .. ..$ : chr [1:168] &quot;AAGGCAGGTCTTGCGG-1&quot; &quot;ACATCAGCACATTAGC-1&quot; &quot;AAGACCTAGACTGGGT-1&quot; &quot;ACCAGTAAGTGCGATG-1&quot; ...
-##   ..@ x       : num [1:272746] 1 1 1 1 7 38 1 1 1 1 ...
+##   .. ..$ : chr [1:170] &quot;AAGGCAGGTCTTGCGG-1&quot; &quot;ACATCAGCACATTAGC-1&quot; &quot;AAGACCTAGACTGGGT-1&quot; &quot;AATCCAGAGATCTGAA-1&quot; ...
+##   ..@ x       : num [1:272781] 1 1 1 1 7 38 1 1 1 1 ...
 ##   ..@ factors : list()</code></pre>
 </div>
 <div id="downstream-analysis" class="section level2">
 <h2><span class="header-section-number">3.4</span> Downstream analysis</h2>
-<p>After <code>CB2</code> pre-processing, real cell matrix is still in matrix format, so it can be directly followed by downstream statistical analysis. For example, if we want to use <em>Seurat</em> pipeline, we can easily create a Seurat object using</p>
+<p>After <code>CB2</code> pre-processing, the real cell matrix is still in matrix format, so it can be directly used in downstream statistical analyses. For example, if we want to use the <em>Seurat</em> pipeline, we can easily create a Seurat object using</p>
 <pre class="r"><code>SeuratObj &lt;- Seurat::CreateSeuratObject(counts = RealCell, 
     project = &quot;mbrain_example&quot;)
 SeuratObj</code></pre>
 <pre><code>## An object of class Seurat 
-## 27998 features across 168 samples within 1 assay 
+## 27998 features across 170 samples within 1 assay 
 ## Active assay: RNA (27998 features, 0 variable features)</code></pre>
 </div>
 <div id="all-in-one-function-1" class="section level2">
 <h2><span class="header-section-number">3.5</span> All-in-one function</h2>
-<p>Under default parameters, we can directly use all-in-one function <code>QuickCB2</code> to get real cell matrix from 10x raw data.</p>
+<p>Under default parameters, we can directly use the all-in-one function <code>QuickCB2</code> to get the real cell matrix from 10x raw data.</p>
 <pre class="r"><code>RealCell_Quick &lt;- QuickCB2(dir = data.dir, Ncores = 2)</code></pre>
-<pre><code>## Time difference of 3.33085 mins</code></pre>
+<pre><code>## Time difference of 3.619546 mins</code></pre>
 <pre class="r"><code>str(RealCell_Quick)</code></pre>
 <pre><code>## Formal class &#39;dgCMatrix&#39; [package &quot;Matrix&quot;] with 6 slots
-##   ..@ i       : int [1:3564472] 227 663 1901 1993 2419 2939 2942 4121 4421 4520 ...
-##   ..@ p       : int [1:2255] 0 89 182 273 369 468 567 657 766 875 ...
-##   ..@ Dim     : int [1:2] 27998 2254
+##   ..@ i       : int [1:3563579] 227 663 1901 1993 2419 2939 2942 4121 4421 4520 ...
+##   ..@ p       : int [1:2245] 0 89 182 273 369 468 567 657 766 875 ...
+##   ..@ Dim     : int [1:2] 27998 2244
 ##   ..@ Dimnames:List of 2
 ##   .. ..$ : chr [1:27998] &quot;Xkr4&quot; &quot;Gm1992&quot; &quot;Gm37381&quot; &quot;Rp1&quot; ...
-##   .. ..$ : chr [1:2254] &quot;AGTAGTCCAATGTTGC-1&quot; &quot;GTGCTTCGTCAATGTC-1&quot; &quot;GAGTCCGGTCAACATC-1&quot; &quot;AACTGGTAGAGCTATA-1&quot; ...
-##   ..@ x       : num [1:3564472] 2 1 1 1 1 1 1 1 1 1 ...
+##   .. ..$ : chr [1:2244] &quot;AGTAGTCCAATGTTGC-1&quot; &quot;GTGCTTCGTCAATGTC-1&quot; &quot;GAGTCCGGTCAACATC-1&quot; &quot;AACTGGTAGAGCTATA-1&quot; ...
+##   ..@ x       : num [1:3563579] 2 1 1 1 1 1 1 1 1 1 ...
 ##   ..@ factors : list()</code></pre>
 <p>Now it’s ready for downstream analysis such as normalization and clustering. Example Seurat tutorial: <a href="https://satijalab.org/seurat/v3.1/pbmc3k_tutorial.html" class="uri">https://satijalab.org/seurat/v3.1/pbmc3k_tutorial.html</a></p>
 </div>
@@ -909,7 +925,7 @@ SeuratObj</code></pre>
 ## [1] stats     graphics  grDevices utils     datasets  methods   base     
 ## 
 ## other attached packages:
-## [1] scCB2_0.99.18    knitr_1.28       BiocStyle_2.16.0
+## [1] scCB2_0.99.19    knitr_1.28       BiocStyle_2.16.0
 ## 
 ## loaded via a namespace (and not attached):
 ##   [1] Seurat_3.1.5                Rtsne_0.15                 
